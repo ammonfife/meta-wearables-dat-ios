@@ -47,9 +47,12 @@ class WearablesViewModel: ObservableObject {
       await setupDeviceStream()
     }
 
+    BluetoothManager.log("WearablesViewModel init — registrationState: \(wearables.registrationState), devices: \(wearables.devices.count)")
+
     registrationTask = Task {
       for await registrationState in wearables.registrationStateStream() {
         let previousState = self.registrationState
+        BluetoothManager.log("Registration: \(previousState) → \(registrationState)")
         self.registrationState = registrationState
         if self.showGettingStartedSheet == false && registrationState == .registered && previousState == .registering {
           self.showGettingStartedSheet = true
@@ -71,6 +74,22 @@ class WearablesViewModel: ObservableObject {
 
     deviceStreamTask = Task {
       for await devices in wearables.devicesStream() {
+        var deviceInfo: [String] = []
+        for devId in devices {
+          if let dev = wearables.deviceForIdentifier(devId) {
+            let name = dev.nameOrId()
+            let link = dev.linkState
+            let compat = dev.compatibility()
+            let devType = dev.deviceType()
+            deviceInfo.append("\(name): link=\(link), compat=\(compat), type=\(devType)")
+            
+            // Monitor link state changes
+            let _ = dev.addLinkStateListener { newState in
+              BluetoothManager.log("LINK STATE CHANGED: \(name) → \(newState)")
+            }
+          }
+        }
+        BluetoothManager.log("Devices updated: \(devices.count) — \(deviceInfo.joined(separator: "; "))")
         self.devices = devices
         #if DEBUG
         self.hasMockDevice = !MockDeviceKit.shared.pairedDevices.isEmpty
@@ -106,13 +125,20 @@ class WearablesViewModel: ObservableObject {
   }
 
   func connectGlasses() {
-    guard registrationState != .registering else { return }
+    guard registrationState != .registering else {
+      BluetoothManager.log("connectGlasses() — already registering, skipped")
+      return
+    }
+    BluetoothManager.log("connectGlasses() — starting registration")
     Task { @MainActor in
       do {
         try await wearables.startRegistration()
+        BluetoothManager.log("startRegistration() completed")
       } catch let error as RegistrationError {
+        BluetoothManager.log("Registration ERROR: \(error.description)")
         showError(error.description)
       } catch {
+        BluetoothManager.log("Registration ERROR (generic): \(error.localizedDescription)")
         showError(error.localizedDescription)
       }
     }

@@ -65,6 +65,16 @@ struct NonStreamView: View {
 
         Spacer()
 
+        // Bluetooth & Network devices
+        if !viewModel.hasActiveDevice {
+          ScrollView {
+            BluetoothDevicesView(btManager: BluetoothManager.shared)
+              .colorScheme(.dark)
+          }
+          .frame(maxHeight: 250)
+          .padding(.bottom, 8)
+        }
+
         HStack(spacing: 8) {
           Image(systemName: "hourglass")
             .resizable()

@@ -18,6 +18,10 @@ import MWDATCamera
 import MWDATCore
 import SwiftUI
 
+private func llog(_ msg: String) {
+    BluetoothManager.log(msg)
+}
+
 enum StreamingStatus {
   case streaming
   case waiting
@@ -61,10 +65,13 @@ class StreamSessionViewModel: ObservableObject {
       frameRate: 24)
     streamSession = StreamSession(streamSessionConfig: config, deviceSelector: deviceSelector)
 
+    llog("StreamSessionViewModel init — config: raw, low, 24fps")
+    
     // Monitor device availability
     deviceMonitorTask = Task { @MainActor in
       for await device in deviceSelector.activeDeviceStream() {
         self.hasActiveDevice = device != nil
+        llog("activeDevice changed: \(device != nil ? "CONNECTED" : "nil")")
       }
     }
 
@@ -72,6 +79,7 @@ class StreamSessionViewModel: ObservableObject {
     // State changes tell us when streaming starts, stops, or encounters issues
     stateListenerToken = streamSession.statePublisher.listen { [weak self] state in
       Task { @MainActor [weak self] in
+        llog("Stream state: \(state)")
         self?.updateStatusFromState(state)
       }
     }
@@ -86,7 +94,10 @@ class StreamSessionViewModel: ObservableObject {
           self.currentVideoFrame = image
           if !self.hasReceivedFirstFrame {
             self.hasReceivedFirstFrame = true
+            llog("FIRST VIDEO FRAME received! size=\(image.size)")
           }
+        } else {
+          llog("videoFrame.makeUIImage() returned nil")
         }
       }
     }
@@ -97,6 +108,7 @@ class StreamSessionViewModel: ObservableObject {
       Task { @MainActor [weak self] in
         guard let self else { return }
         let newErrorMessage = formatStreamingError(error)
+        llog("STREAM ERROR: \(error) — \(newErrorMessage)")
         if newErrorMessage != self.errorMessage {
           showError(newErrorMessage)
         }
@@ -121,24 +133,31 @@ class StreamSessionViewModel: ObservableObject {
   func handleStartStreaming() async {
     let permission = Permission.camera
     do {
+      llog("handleStartStreaming — checking camera permission")
       let status = try await wearables.checkPermissionStatus(permission)
+      llog("camera permission status: \(status)")
       if status == .granted {
         await startSession()
         return
       }
       let requestStatus = try await wearables.requestPermission(permission)
+      llog("camera permission request result: \(requestStatus)")
       if requestStatus == .granted {
         await startSession()
         return
       }
+      llog("Permission denied!")
       showError("Permission denied")
     } catch {
+      llog("Permission error: \(error)")
       showError("Permission error: \(error.description)")
     }
   }
 
   func startSession() async {
+    llog("startSession() called — starting stream")
     await streamSession.start()
+    llog("startSession() returned — state: \(streamSession.state)")
   }
 
   private func showError(_ message: String) {

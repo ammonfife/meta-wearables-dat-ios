@@ -31,6 +31,8 @@ struct CameraAccessApp: App {
   #endif
   private let wearables: WearablesInterface
   @StateObject private var wearablesViewModel: WearablesViewModel
+  // Init BluetoothManager at app level so it always runs (even when already registered)
+  @StateObject private var btManager = BluetoothManager.shared
 
   init() {
     do {
@@ -71,4 +73,9 @@ struct CameraAccessApp: App {
       RegistrationView(viewModel: wearablesViewModel)
     }
   }
+}
+
+// Global log helper
+func lkupLog(_ msg: String) {
+    BluetoothManager.log(msg)
 }

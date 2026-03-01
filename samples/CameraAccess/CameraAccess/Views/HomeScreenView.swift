@@ -18,18 +18,26 @@ import SwiftUI
 
 struct HomeScreenView: View {
   @ObservedObject var viewModel: WearablesViewModel
+  @StateObject private var btManager = BluetoothManager.shared
 
   var body: some View {
-    ZStack {
-      Color.white.edgesIgnoringSafeArea(.all)
-
+    ScrollView {
       VStack(spacing: 12) {
-        Spacer()
-
         Image(.cameraAccessIcon)
           .resizable()
           .aspectRatio(contentMode: .fit)
-          .frame(width: 120)
+          .frame(width: 100)
+          .padding(.top, 24)
+
+        Text("lkup Scanner")
+          .font(.system(size: 24, weight: .bold))
+          .foregroundColor(.black)
+
+        // Bluetooth devices section
+        BluetoothDevicesView(btManager: btManager)
+          .padding(.vertical, 8)
+
+        Divider()
 
         VStack(spacing: 12) {
           HomeTipItemView(
@@ -49,8 +57,6 @@ struct HomeScreenView: View {
           )
         }
 
-        Spacer()
-
         VStack(spacing: 20) {
           Text("You'll be redirected to the Meta AI app to confirm your connection.")
             .font(.system(size: 14))
@@ -67,9 +73,11 @@ struct HomeScreenView: View {
             viewModel.connectGlasses()
           }
         }
+        .padding(.bottom, 24)
       }
-      .padding(.all, 24)
+      .padding(.horizontal, 24)
     }
+    .background(Color.white.edgesIgnoringSafeArea(.all))
   }
 
 }
