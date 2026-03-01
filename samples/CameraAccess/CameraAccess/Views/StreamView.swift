@@ -20,6 +20,7 @@ import SwiftUI
 struct StreamView: View {
   @ObservedObject var viewModel: StreamSessionViewModel
   @ObservedObject var wearablesVM: WearablesViewModel
+  @ObservedObject var scannerVM: ScannerViewModel
 
   var body: some View {
     ZStack {
@@ -43,11 +44,16 @@ struct StreamView: View {
           .foregroundColor(.white)
       }
 
-      // Bottom controls layer
+      // Coin result overlay
+      if scannerVM.showResult, let coin = scannerVM.lastResult {
+        CoinResultView(coin: coin, onDismiss: { scannerVM.dismissResult() })
+          .animation(.spring(response: 0.4), value: scannerVM.showResult)
+      }
 
+      // Bottom controls layer
       VStack {
         Spacer()
-        ControlsView(viewModel: viewModel)
+        ControlsView(viewModel: viewModel, scannerVM: scannerVM)
       }
       .padding(.all, 24)
     }
@@ -75,6 +81,10 @@ struct StreamView: View {
 // Extracted controls for clarity
 struct ControlsView: View {
   @ObservedObject var viewModel: StreamSessionViewModel
+  @ObservedObject var scannerVM: ScannerViewModel
+
+  private let gold = Color(red: 0.831, green: 0.686, blue: 0.216)
+
   var body: some View {
     // Controls row
     HStack(spacing: 8) {
@@ -85,6 +95,21 @@ struct ControlsView: View {
       ) {
         Task {
           await viewModel.stopSession()
+        }
+      }
+
+      // Coin scan button
+      ZStack {
+        CircleButton(icon: scannerVM.isScanning ? "circle.dotted" : "dollarsign.circle.fill", text: nil) {
+          scannerVM.scan()
+        }
+        .tint(gold)
+        .disabled(scannerVM.isScanning)
+
+        if scannerVM.isScanning {
+          ProgressView()
+            .progressViewStyle(CircularProgressViewStyle(tint: gold))
+            .allowsHitTesting(false)
         }
       }
 

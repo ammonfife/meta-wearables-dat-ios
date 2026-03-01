@@ -18,18 +18,21 @@ struct StreamSessionView: View {
   let wearables: WearablesInterface
   @ObservedObject private var wearablesViewModel: WearablesViewModel
   @StateObject private var viewModel: StreamSessionViewModel
+  @StateObject private var scannerVM: ScannerViewModel
 
   init(wearables: WearablesInterface, wearablesVM: WearablesViewModel) {
     self.wearables = wearables
     self.wearablesViewModel = wearablesVM
-    self._viewModel = StateObject(wrappedValue: StreamSessionViewModel(wearables: wearables))
+    let streamVM = StreamSessionViewModel(wearables: wearables)
+    self._viewModel = StateObject(wrappedValue: streamVM)
+    self._scannerVM = StateObject(wrappedValue: ScannerViewModel(streamVM: streamVM))
   }
 
   var body: some View {
     ZStack {
       if viewModel.isStreaming {
-        // Full-screen video view with streaming controls
-        StreamView(viewModel: viewModel, wearablesVM: wearablesViewModel)
+        // Full-screen video view with streaming controls + coin scanner
+        StreamView(viewModel: viewModel, wearablesVM: wearablesViewModel, scannerVM: scannerVM)
       } else {
         // Pre-streaming setup view with permissions and start button
         NonStreamView(viewModel: viewModel, wearablesVM: wearablesViewModel)
