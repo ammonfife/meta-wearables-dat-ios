@@ -24,22 +24,35 @@ class ScannerViewModel: ObservableObject {
     }
 
     func scan() {
-        guard !isScanning else { return }
-        guard Date().timeIntervalSince(lastScanTime) >= cooldown else { return }
-        guard let frame = streamVM.currentVideoFrame else { return }
+        guard !isScanning else {
+            BluetoothManager.log("scan() — already scanning, skipped")
+            return
+        }
+        guard Date().timeIntervalSince(lastScanTime) >= cooldown else {
+            BluetoothManager.log("scan() — cooldown active, skipped")
+            return
+        }
+        guard let frame = streamVM.currentVideoFrame else {
+            BluetoothManager.log("scan() — no video frame available")
+            return
+        }
 
         isScanning = true
         lastScanTime = Date()
+        BluetoothManager.log("scan() — sending frame \(frame.size) to lkup.info/api/identify")
 
         Task {
             let result = await LkupService.shared.identify(image: frame)
             self.isScanning = false
 
             if let result {
+                BluetoothManager.log("scan() — IDENTIFIED: \(result.name), grade=\(result.grade ?? "?"), market=\(result.prices?.marketplaceAvg.map { String(format: "$%.0f", $0) } ?? "?")")
                 self.lastResult = result
                 self.showResult = true
                 speak(result)
                 scheduleAutoDismiss()
+            } else {
+                BluetoothManager.log("scan() — identification FAILED (nil result)")
             }
         }
     }

@@ -50,8 +50,10 @@ actor LkupService {
 
     func identify(image: UIImage) async -> CoinIdentification? {
         guard let jpegData = image.jpegData(compressionQuality: 0.8) else {
+            BluetoothManager.log("identify() — failed to create JPEG data")
             return nil
         }
+        BluetoothManager.log("identify() — sending \(jpegData.count) bytes to \(baseURL)")
 
         let boundary = UUID().uuidString
         var request = URLRequest(url: URL(string: baseURL)!)
@@ -70,14 +72,15 @@ actor LkupService {
             let (data, response) = try await session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse,
                   (200...299).contains(httpResponse.statusCode) else {
+                let code = (response as? HTTPURLResponse)?.statusCode ?? -1
+                BluetoothManager.log("identify() — HTTP \(code) error")
                 return nil
             }
+            BluetoothManager.log("identify() — got \(data.count) bytes response, HTTP \(httpResponse.statusCode)")
             let decoder = JSONDecoder()
             return try decoder.decode(CoinIdentification.self, from: data)
         } catch {
-            #if DEBUG
-            NSLog("[lkup] Identification failed: \(error)")
-            #endif
+            BluetoothManager.log("identify() — FAILED: \(error)")
             return nil
         }
     }
